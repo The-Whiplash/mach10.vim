@@ -1,46 +1,61 @@
-function! FlashStep() abort
-  let best_pos  = [0, 0]
-  let best_char = ''
-  let cur_line  = line('.')
-  let cur_col   = col('.')
+nnoremap J :m .+1<CR>==
+nnoremap K :m .-2<CR>==
+xnoremap J :m '>+1<CR>gv=gv
+xnoremap K :m '<-2<CR>gv=gv
 
-  " Bracket pairs — searchpairpos works correctly for these
-  for [o, c] in [['(', ')'], ['[', ']'], ['{', '}']]
-    let pos = searchpairpos('\V' . o, '', '\V' . c, 'bnW')
-    if s:IsTighter(pos, best_pos)
-      let best_pos  = pos
-      let best_char = o
-    endif
-  endfor
+nnoremap H <<
+nnoremap L >>
 
-  " Quote pairs — odd count before cursor means we're inside one
-  let before = strpart(getline(cur_line), 0, cur_col - 1)
-  for q in ['"', "'", '`']
-    let n = len(substitute(before, '[^' . q . ']', '', 'g'))
-    if n % 2 == 1
-      let pos = [cur_line, strridx(before, q) + 1]
-      if s:IsTighter(pos, best_pos)
-        let best_pos  = pos
-        let best_char = q
-      endif
-    endif
-  endfor
+xnoremap H :<C-u>call FlashStep('l')<CR>gv
+xnoremap L :<C-u>call FlashStep('r')<CR>gv
 
-  if best_char ==# ''
-    echo "No surrounding pair found."
-    return
-  endif
-
-  " Jump to the opener, then delete inside
-  call cursor(best_pos[0], best_pos[1])
-  execute 'normal! di' . best_char
+function! FlashStep(dir) abort
+	let l1 = line("'<")
+	let l2 = line("'>")
+	if l1 != l2
+		call FlashStepMultiple(a:dir)
+	else
+		call FlashStepHelper(l1, a:dir)
+	endif
+	normal! gv
 endfunction
 
-function! s:IsTighter(new, current) abort
-  if a:new[0] == 0 | return 0 | endif
-  if a:current[0] == 0 | return 1 | endif
-  return a:new[0] > a:current[0]
-    \ || (a:new[0] == a:current[0] && a:new[1] > a:current[1])
+function! FlashStepMultiple(dir) abort
+	let l1 = line("'<")
+	let l2 = line("'>")
+	if a:dir == 'l'
+		execute l1 . ',' . l2 . '<'
+	elseif a:dir == 'r'
+		execute l1 . ',' . l2 . '>'
+	endif
 endfunction
 
-nnoremap <silent> <leader><leader> :call FlashStep()<CR>i
+function! FlashStepHelper(lnum, dir) abort
+	let line = getline(a:lnum)
+	let c1 = col("'<") - 1
+	let c2 = col("'>") - 1
+
+	if a:dir == 'r'
+		if c2 + 1 >= strlen(line)
+			return
+		endif
+		let before = c1 > 0 ? line[:c1-1] : ''
+		let selected = line[c1:c2]
+		let next_char = line[c2+1]
+		let after = line[c2+2:]
+		call setline(a:lnum, before . next_char . selected . after)
+		call setpos("'<", [0, a:lnum, c1 + 2, 0])
+		call setpos("'>", [0, a:lnum, c2 + 2, 0])
+	elseif a:dir == 'l'
+		if c1 <= 0
+			return
+		endif
+		let before = c1 > 1 ? line[:c1-2] : ''
+		let prev_char = line[c1-1]
+		let selected = line[c1:c2]
+		let after = line[c2+1:]
+		call setline(a:lnum, before . selected . prev_char . after)
+		call setpos("'<", [0, a:lnum, c1, 0])
+		call setpos("'>", [0, a:lnum, c2, 0])
+	endif
+endfunction

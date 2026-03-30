@@ -37,53 +37,6 @@ map 0 ^
 " If you do vim ./x/y/z, and then do leader cd, your working directory becomes that directory
 nnoremap <leader>cd :cd %:p:h<cr>:pwd<cr>
 
-" Better movement.
-nnoremap J :m .+1<CR>==
-nnoremap K :m .-2<CR>==
-xnoremap J :m '>+1<CR>gv=gv
-xnoremap K :m '<-2<CR>gv=gv
-
-nnoremap H <<
-nnoremap L >>
-
-xnoremap H :<C-u>call VisualNudge('l')<CR>
-xnoremap L :<C-u>call VisualNudge('r')<CR>
-
-function! VisualNudge(dir) abort
-  let l1 = line("'<")
-  let l2 = line("'>")
-  if l1 != l2
-    execute "normal! gv" . (a:dir == 'l' ? '<' : '>')
-    normal! gv
-    return
-  endif
-  let s = getline(l1)
-  let c1 = col("'<")
-  let c2 = col("'>")
-  if c1 > c2
-    let [c1, c2] = [c2, c1]
-  endif
-  let line_len = strlen(s)
-  if a:dir == 'l' && c1 <= 1 || a:dir == 'r' && c2 >= line_len
-    normal! gv
-    return
-  endif
-  let before = strpart(s, 0, c1 - 1)
-  let sel    = strpart(s, c1 - 1, c2 - c1 + 1)
-  let after  = strpart(s, c2)
-  if a:dir == 'l'
-    let swap = strpart(before, -1)
-    call setline(l1, strpart(before, 0, strlen(before) - 1) . sel . swap . after)
-  else
-    let swap = strpart(after, 0, 1)
-    call setline(l1, before . swap . sel . strpart(after, 1))
-  endif
-  let offset = a:dir == 'l' ? -1 : 1
-  call setpos("'<", [0, l1, c1 + offset, 0])
-  call setpos("'>", [0, l1, c2 + offset, 0])
-  normal! gv
-endfunction
-
 " Set clipboard to system clipboard
 if has('clipboard')
 	set clipboard^=unnamed,unnamedplus
@@ -120,4 +73,3 @@ xnoremap 9 5<C-y>
 " ── Delete/wipe helpers ─────────────────────────────────────
 xnoremap <silent> <leader>dd "_d
 nnoremap <silent> <leader>wipe :silent! %delete _<CR>
-
